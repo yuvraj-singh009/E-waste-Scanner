@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heatmap with Google Maps</title>
+    
+    <!-- Load Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <script>
+        // Initialize Supabase
+        document.addEventListener("DOMContentLoaded", function () {
+            const supabaseUrl = "https://afieewyossvtxetxytnr.supabase.co";
+            const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmaWVld3lvc3N2dHhldHh5dG5yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjgxNTc4MCwiZXhwIjoyMDQ4MzkxNzgwfQ.agrmFADCTLm4n3w8tykxwIjz9K7MuknHk4GfOCTNWLM";
+            window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        });
+
+        async function fetchLocationData() {
+            try {
+                let { data, error } = await supabase.from("locations").select("*");
+
+                if (error) {
+                    console.error("Error fetching data from Supabase:", error);
+                    return [];
+                }
+
+                return data;
+            } catch (err) {
+                console.error("Unexpected error:", err);
+                return [];
+            }
+        }
+
+        function initMap() {
+            console.log("Initializing Google Map...");
+            
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 5,
+                center: { lat: 20.5937, lng: 78.9629 }, // India
+                mapTypeId: "roadmap",
+            });
+
+            fetchLocationData().then(locations => {
+                if (!locations || locations.length === 0) {
+                    console.warn("No data received for heatmap.");
+                    return;
+                }
+
+                console.log("Fetched locations:", locations);
+
+                const heatmapData = locations.map(loc => {
+                    if (!loc.latitude || !loc.longitude) {
+                        console.warn("Invalid location data:", loc);
+                        return null;
+                    }
+                    return {
+                        location: new google.maps.LatLng(loc.latitude, loc.longitude),
+                        weight: loc.count || 1 // Default weight to 1
+                    };
+                }).filter(point => point !== null); // Remove null values
+
+                if (heatmapData.length === 0) {
+                    console.warn("No valid heatmap data points.");
+                    return;
+                }
+
+                const heatmap = new google.maps.visualization.HeatmapLayer({
+                    data: heatmapData,
+                    radius: 30
+                });
+
+                heatmap.setMap(map);
+            });
+        }
+
+        window.initMap = initMap; // Ensure function is globally accessible
+    </script>
+</head>
+<body>
+    <h2>Heatmap</h2>
+    <div id="map" style="width: 100%; height: 500px;"></div>
+
+    <!-- Load Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDuW4_fYnN5N4hUjNuPKuf-OSh4eQDwVE8&libraries=visualization&callback=initMap"></script>
+</body>
+</html>
